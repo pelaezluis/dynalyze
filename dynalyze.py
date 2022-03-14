@@ -1,5 +1,5 @@
 # Importando librerías necesarias
-
+from os.path import isfile
 import pandas as pd
 import matplotlib.pyplot as plt
 # import numpy as np
@@ -14,23 +14,60 @@ class Distance:
         Y sus respectivas graficas
     """
     
-    def __init__(self, input_file, frames):
+    def __init__(self, input_file):
         self.input_file = input_file
-        self.output_file = 'avg_' + input_file.split('.')[0]
-        self.frames = frames
         
-    
-    # Leer datos de vmd
-    def load_data(self):
-        """
-            Load data from vmd txt file
-        """
 
-        # Verify if the file exists
-        file = open(self.input_file, 'r')
+    def load_input_data(self):
+        """
+            read input file with data and configuration
+        """
+        files = []
+        if isfile(self.input_file):
+            print('\n>>> Input file found...')
+            print('>>> Reading parameters...\n')
+            data = open(self.input_file, 'r')
+
+            for parameter in data:
+                line = parameter.split()
+                if len(line) == 0:
+                    continue
+                elif line[0] == 'file:':
+                    if isfile(line[1]):
+                        print(f'* File {line[1]} found!')
+                        files.append(line[1])
+                    else:
+                        print(f'File {line[1]} does not exist!')
+                        exit()
+                elif line[0] == 'interval:':
+                    interval = int(line[1])
+            return (files, interval)
+
+        else:
+            print('File input.dyn does not exist...')
+            exit()
+
+
+    def load_data(self, vmd_file):
+        """
+            Load data from vmd txt file and create a dataframe
+        """
+        file = open(vmd_file, 'r')
         return [round(float(distance.split()[1]), 3) for distance in file]
     
-    
+
+    def distances_dataframe(self):
+        df = {}
+        files = self.load_input_data()[0]
+        print('\n>>> Creating distances dataframe...')
+        for file in files:
+            column = file.split('.')[0].split('_')[1]
+            distances = self.load_data(file)
+            df[column] = distances
+
+        df = pd.DataFrame(df)
+        return df
+
 
     def mean(self):
         """
@@ -57,13 +94,6 @@ class Distance:
         return (intervals, avg)
 
 
-    def distances(self):
-        """
-            Create a dataframe with all the distance parameters
-        """
-        pass
-
-
     def graph(self):
         interval, avg = self.mean()
         plt.plot(interval, avg)
@@ -80,12 +110,28 @@ class Energy:
         self.input_file = input_file
 
 
+    def load_input_data(self):
+        if isfile(self.input_file):
+            data = open(self.input_file, 'r')
+            for line in data:
+                csv_file = line.split()
+                if len(csv_file) == 0:
+                    continue
+                elif csv_file[0] == 'ie_file:':
+                    print(f'* File {csv_file[1]} found!\n')
+                    return csv_file[1]
+
+        else:
+            print('File input.dyn does not exist...')
+            exit()
+
+
     def load_data(self):
         """
             Load data from multipdb
         """
-        data = pd.read_csv(self.input_file)
-        #print(data.head())
+        input_file = self.load_input_data()
+        data = pd.read_csv(input_file)
         return data
 
 
@@ -148,12 +194,46 @@ class Dies:
         Analyze energy and distance from Energy and Distance class
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, ie_df, d_df, input_file):
+        self.ie_df = ie_df
+        self.d_df = d_df
+        self.input_file = input_file
+
+
+    def load_input_data(self):
+        if isfile(self.input_file):
+            data = open(self.input_file, 'r')
+            for line in data:
+                output_file = line.split()
+                if len(output_file) == 0:
+                    continue
+                elif output_file[0] == 'output:':
+                    print(f'* File {output_file[1]} found!\n')
+                    return output_file[1]
+            
+        else:
+            print('File input.dyn does not exist...')
+            exit()
 
 
     def join_energy_distances(self):
-        pass
+        print('>>> Joining energy and distance dataframes...\n')
+        return pd.concat([self.d_df, self.ie_df], axis=1)
+
+    
+    def save_dies(self):
+        df = self.join_energy_distances()
+        output = self.load_input_data()
+        if isfile(output):
+            option = input(f'*** {output} already exists. Overwrite it [y/n] ***')
+            if option.lower() == 's':
+                df.to_csv(output, index=False)
+            elif option.lower() == 'n':
+                pass
+            else:
+                print('*** Invalid option. Closing the script...')
+        else:
+            df.to_csv(output, index=False)
 
 
     def energy_graph(self):
@@ -167,6 +247,7 @@ class Dies:
     def energy_distance_graph(self):
         pass
 
+    
 
 
 
@@ -174,11 +255,11 @@ class Dies:
 #                     Pruebas                   #
 #################################################
 
-# file = 'test.txt'
-# test = Distance(file, 100)
-# test.graph()
+# file = 'input.dyn'
+# test = Distance(file)
+# test.distances_dataframe()
 
-file = 'F0T_A_multi_ie_matrix.csv'
-test = Energy(file)
-print(test.convert_structure())
-#test.save()
+# test = Energy(file)
+# test.load_input_data()
+# print(test.convert_structure())
+# test.save()
