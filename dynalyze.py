@@ -3,7 +3,7 @@ from os.path import isfile
 import pandas as pd
 import matplotlib.pyplot as plt
 # import numpy as np
-# import seaborn
+import seaborn as sns
 
 
 class Distance:
@@ -212,7 +212,7 @@ class Dies:
                     return output_file[1]
             
         else:
-            print('File input.dyn does not exist...')
+            print('File input.dyn does not exist. Closing the script...\n')
             exit()
 
 
@@ -236,12 +236,55 @@ class Dies:
             df.to_csv(output, index=False)
 
 
+    def ordered_by_mean(self, dataframe):
+        columns = dataframe.columns[2:20]
+        interaction_energy = []
+        for col in columns:
+            interaction_energy.append(dataframe[col].mean())
+        df = {'Fragment': columns, 'IE': interaction_energy}
+        df = pd.DataFrame(df).set_index('Fragment').sort_values(by = 'IE')
+
+        energy_df = {}
+        for fragment in df.index:
+            energy_df[fragment] = dataframe[fragment]
+        return pd.DataFrame(energy_df)
+
+
+    def ordered_by_median(self, dataframe):
+        columns = dataframe.columns[2:20]
+        interaction_energy = []
+        for col in columns:
+            interaction_energy.append(dataframe[col].median())
+        df = {'Fragment': columns, 'IE': interaction_energy}
+        df = pd.DataFrame(df).set_index('Fragment').sort_values(by = 'IE')
+
+        energy_df = {}
+        for fragment in df.index:
+            energy_df[fragment] = dataframe[fragment]
+        return pd.DataFrame(energy_df)
+
+
     def energy_graph(self):
         pass
 
 
-    def energy_boxplot(self):
-        pass
+    def energy_boxplot(self, dataframe, title='Titulo'):
+        sns.boxplot(data=dataframe)
+        plt.title(title)
+        plt.xlabel('Residuos')
+        plt.ylabel('Energia de Interacción')
+        #plt.savefig('sin-outliers_mean.png')
+        plt.show()
+        
+
+    def density_graph(self, ligand, x_axis, y_axis, color):
+        data = self.join_energy_distances()
+        sns.jointplot(data=data, x=x_axis, y=y_axis, kind="hex", color=color)
+        plt.xlabel('Distancia a Cxα (Å)', fontsize = 14)
+        plt.ylabel(f'EI {ligand} - FADH2 (kcal/mol)', fontsize = 14)
+        plt.axis([2, 12, -35, -5 ])
+        plt.show()
+        #plt.savefig(f'{ligand}_density.svg')
 
 
     def energy_distance_graph(self):
